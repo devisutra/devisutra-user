@@ -18,7 +18,7 @@ export default function Footer() {
       { name: 'Terms & Conditions', href: '/terms' },
     ],
     'My Account': [
-      { name: 'Login', href: '/user-login' },
+      { name: 'Login', href: '/login' },
       { name: 'Sign Up', href: '/signup' },
       { name: 'My Orders', href: '/orders' },
       { name: 'Account Settings', href: '/account' },

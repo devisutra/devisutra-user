@@ -50,6 +50,7 @@ export function isAuthenticated(): boolean {
     // Check if token is expired
     return decoded.exp * 1000 > Date.now();
   } catch (error) {
+    console.error('Failed to decode token:', error);
     return false;
   }
 }
@@ -88,6 +89,7 @@ export function isTokenExpired(): boolean {
     const decoded = jwtDecode<DecodedToken>(token);
     return decoded.exp * 1000 < Date.now();
   } catch (error) {
+    console.error('Failed to decode token:', error);
     return true;
   }
 }
@@ -103,6 +105,7 @@ export function getTokenExpiry(): Date | null {
     const decoded = jwtDecode<DecodedToken>(token);
     return new Date(decoded.exp * 1000);
   } catch (error) {
+    console.error('Failed to decode token:', error);
     return null;
   }
 }
@@ -114,7 +117,7 @@ export function requireAuth(): boolean {
   if (!isAuthenticated()) {
     // Redirect to login
     if (typeof window !== 'undefined') {
-      window.location.href = '/user-login';
+      window.location.href = '/login';
     }
     return false;
   }

@@ -3,7 +3,7 @@
  * Centralized API calls to backend service
  */
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
 /**
  * Base fetch wrapper with error handling
@@ -226,7 +226,7 @@ export const userAPI = {
 };
 
 // Export all as default
-export default {
+const apiClient = {
   products: productsAPI,
   auth: authAPI,
   cart: cartAPI,
@@ -234,3 +234,5 @@ export default {
   reviews: reviewsAPI,
   user: userAPI,
 };
+
+export default apiClient;
