@@ -1,39 +1,30 @@
 /**
  * API Client for Devi Sutra User Frontend
- * Centralized API calls to backend service
+ * Centralized API calls to backend service using Axios
  */
+
+import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL;
 
-/**
- * Base fetch wrapper with error handling
- */
-async function apiFetch(endpoint: string, options: RequestInit = {}) {
-  const url = `${API_URL}${endpoint}`;
-  
-  const config: RequestInit = {
-    ...options,
-    headers: {
-      'Content-Type': 'application/json',
-      ...options.headers,
-    },
-    credentials: 'include', // Send cookies for auth
-  };
+// Create axios instance
+const axiosInstance = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  withCredentials: true, // Send cookies for auth
+});
 
-  try {
-    const response = await fetch(url, config);
-    const data = await response.json();
-
-    if (!response.ok) {
-      throw new Error(data.message || data.error || 'API request failed');
-    }
-
-    return data;
-  } catch (error) {
-    console.error(`API Error (${endpoint}):`, error);
-    throw error;
+// Response interceptor for error handling and data extraction
+axiosInstance.interceptors.response.use(
+  (response) => response.data.data || response.data,
+  (error) => {
+    console.error(`API Error:`, error);
+    const message = error.response?.data?.message || error.response?.data?.error || error.message || 'API request failed';
+    throw new Error(message);
   }
-}
+);
 
 /**
  * Products API
@@ -46,23 +37,19 @@ export const productsAPI = {
     if (filters?.sort) params.append('sort', filters.sort);
     
     const queryString = params.toString();
-    const response = await apiFetch(`/api/products${queryString ? `?${queryString}` : ''}`);
-    return response.data || response; // Extract data from { success, data, count } structure
+    return axiosInstance.get(`/api/products${queryString ? `?${queryString}` : ''}`);
   },
 
   getById: async (id: string) => {
-    const response = await apiFetch(`/api/products/${id}`);
-    return response.data || response;
+    return axiosInstance.get(`/api/products/${id}`);
   },
 
   search: async (query: string) => {
-    const response = await apiFetch(`/api/products/search?q=${encodeURIComponent(query)}`);
-    return response.data || response;
+    return axiosInstance.get(`/api/products/search?q=${encodeURIComponent(query)}`);
   },
 
   getByCategory: async (category: string) => {
-    const response = await apiFetch(`/api/products?category=${encodeURIComponent(category)}`);
-    return response.data || response;
+    return axiosInstance.get(`/api/products?category=${encodeURIComponent(category)}`);
   },
 };
 
@@ -71,48 +58,31 @@ export const productsAPI = {
  */
 export const authAPI = {
   signup: async (data: { fullName: string; email?: string; phone?: string; password?: string }) => {
-    return apiFetch('/api/auth/signup', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    return axiosInstance.post('/api/auth/signup', data);
   },
 
   login: async (data: { email?: string; phone?: string; password?: string }) => {
-    return apiFetch('/api/auth/login', {
-      method: 'POST',
-      body: JSON.stringify(data),
-    });
+    return axiosInstance.post('/api/auth/login', data);
   },
 
   logout: async () => {
-    return apiFetch('/api/auth/logout', {
-      method: 'POST',
-    });
+    return axiosInstance.post('/api/auth/logout');
   },
 
   sendOTP: async (phone: string) => {
-    return apiFetch('/api/auth/send-otp', {
-      method: 'POST',
-      body: JSON.stringify({ phone }),
-    });
+    return axiosInstance.post('/api/auth/send-otp', { phone });
   },
 
   verifyOTP: async (phone: string, otp: string) => {
-    return apiFetch('/api/auth/verify-otp', {
-      method: 'POST',
-      body: JSON.stringify({ phone, otp }),
-    });
+    return axiosInstance.post('/api/auth/verify-otp', { phone, otp });
   },
 
   getSession: async () => {
-    return apiFetch('/api/auth/session');
+    return axiosInstance.get('/api/auth/session');
   },
 
   updateProfile: async (data: { fullName?: string; email?: string; phone?: string }) => {
-    return apiFetch('/api/auth/update-profile', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    return axiosInstance.put('/api/auth/update-profile', data);
   },
 };
 
@@ -121,34 +91,23 @@ export const authAPI = {
  */
 export const cartAPI = {
   get: async () => {
-    const response = await apiFetch('/api/cart');
-    return response.data || response;
+    return axiosInstance.get('/api/cart');
   },
 
   add: async (productId: string, quantity: number = 1) => {
-    return apiFetch('/api/cart/add', {
-      method: 'POST',
-      body: JSON.stringify({ productId, quantity }),
-    });
+    return axiosInstance.post('/api/cart/add', { productId, quantity });
   },
 
   update: async (itemId: string, quantity: number) => {
-    return apiFetch(`/api/cart/update/${itemId}`, {
-      method: 'PUT',
-      body: JSON.stringify({ quantity }),
-    });
+    return axiosInstance.put(`/api/cart/update/${itemId}`, { quantity });
   },
 
   remove: async (itemId: string) => {
-    return apiFetch(`/api/cart/remove/${itemId}`, {
-      method: 'DELETE',
-    });
+    return axiosInstance.delete(`/api/cart/remove/${itemId}`);
   },
 
   clear: async () => {
-    return apiFetch('/api/cart/clear', {
-      method: 'DELETE',
-    });
+    return axiosInstance.delete('/api/cart/clear');
   },
 };
 
@@ -157,26 +116,19 @@ export const cartAPI = {
  */
 export const ordersAPI = {
   create: async (customerDetails: any, paymentMethod: string = 'COD') => {
-    return apiFetch('/api/orders/create', {
-      method: 'POST',
-      body: JSON.stringify({ customerDetails, paymentMethod }),
-    });
+    return axiosInstance.post('/api/orders/create', { customerDetails, paymentMethod });
   },
 
   getAll: async () => {
-    const response = await apiFetch('/api/orders');
-    return response.data || response;
+    return axiosInstance.get('/api/orders');
   },
 
   getById: async (orderId: string) => {
-    const response = await apiFetch(`/api/orders/${orderId}`);
-    return response.data || response;
+    return axiosInstance.get(`/api/orders/${orderId}`);
   },
 
   cancel: async (orderId: string) => {
-    return apiFetch(`/api/orders/${orderId}/cancel`, {
-      method: 'PATCH',
-    });
+    return axiosInstance.patch(`/api/orders/${orderId}/cancel`);
   },
 };
 
@@ -185,7 +137,9 @@ export const ordersAPI = {
  */
 export const reviewsAPI = {
   getByProduct: async (productId: string) => {
-    return apiFetch(`/api/reviews?productId=${productId}`);
+    const response = await axiosInstance.get(`/api/reviews?productId=${productId}`);
+    // Return the reviews array from the nested data structure
+    return response.reviews || [];
   },
 
   create: async (reviewData: {
@@ -195,10 +149,7 @@ export const reviewsAPI = {
     customerName: string;
     images?: string[];
   }) => {
-    return apiFetch('/api/reviews', {
-      method: 'POST',
-      body: JSON.stringify(reviewData),
-    });
+    return axiosInstance.post('/api/reviews', reviewData);
   },
 };
 
@@ -207,21 +158,15 @@ export const reviewsAPI = {
  */
 export const userAPI = {
   getProfile: async () => {
-    return apiFetch('/api/user/profile');
+    return axiosInstance.get('/api/user/profile');
   },
 
   updateProfile: async (data: { fullName?: string; email?: string; phone?: string }) => {
-    return apiFetch('/api/user/profile', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    return axiosInstance.put('/api/user/profile', data);
   },
 
   changePassword: async (data: { currentPassword: string; newPassword: string }) => {
-    return apiFetch('/api/user/change-password', {
-      method: 'PUT',
-      body: JSON.stringify(data),
-    });
+    return axiosInstance.put('/api/user/change-password', data);
   },
 };
 

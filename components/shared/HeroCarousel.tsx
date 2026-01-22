@@ -3,83 +3,104 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { productsAPI } from "@/lib/api-client";
 
-const carouselSlides = [
-  {
-    id: 1,
-    title: "Handmade Elegance.",
-    subtitle: "50% Off Launch Sale.",
-    images: [
-      "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1617019114583-affb34d1b3cd?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?auto=format&fit=crop&q=80&w=800",
-    ],
-  },
-  {
-    id: 2,
-    title: "Artisan Crafted.",
-    subtitle: "Exclusive Collections.",
-    images: [
-      "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1617019114583-affb34d1b3cd?auto=format&fit=crop&q=80&w=800",
-    ],
-  },
-  {
-    id: 3,
-    title: "Traditional Beauty.",
-    subtitle: "Modern Designs.",
-    images: [
-      "https://images.unsplash.com/photo-1617019114583-affb34d1b3cd?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&q=80&w=800",
-    ],
-  },
-  {
-    id: 4,
-    title: "Premium Quality.",
-    subtitle: "Free Shipping Available.",
-    images: [
-      "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1617019114583-affb34d1b3cd?auto=format&fit=crop&q=80&w=800",
-      "https://images.unsplash.com/photo-1566150905458-1bf1fc113f0d?auto=format&fit=crop&q=80&w=800",
-    ],
-  },
-];
+interface Product {
+  _id: string;
+  title: string;
+  images: string[];
+  price: number;
+  category: string;
+}
 
 export default function HeroCarousel() {
   const [activeIndex, setActiveIndex] = useState(0);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch latest 4 products
+  useEffect(() => {
+    const fetchLatestProducts = async () => {
+      try {
+        console.log('Fetching products for carousel...');
+        const data = await productsAPI.getAll({ sort: '-createdAt' });
+        console.log('Products fetched:', data);
+        
+        // Get latest 4 products with images
+        const productsWithImages = (Array.isArray(data) ? data : [])
+          .filter((product: Product) => product.images && product.images.length > 0)
+          .slice(0, 4);
+        
+        console.log('Filtered products with images:', productsWithImages);
+        setProducts(productsWithImages);
+      } catch (error) {
+        console.error("Failed to fetch products:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchLatestProducts();
+  }, []);
 
   // Auto-scroll every 3 seconds
   useEffect(() => {
+    if (products.length === 0) return;
+    
     const interval = setInterval(() => {
       handleNext();
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [activeIndex]);
+  }, [activeIndex, products]);
 
   const handlePrev = () => {
-    if (isTransitioning) return;
+    if (isTransitioning || products.length === 0) return;
     setIsTransitioning(true);
-    setActiveIndex((prev) => (prev === 0 ? carouselSlides.length - 1 : prev - 1));
+    setActiveIndex((prev) => (prev === 0 ? products.length - 1 : prev - 1));
     setTimeout(() => setIsTransitioning(false), 500);
   };
 
   const handleNext = () => {
-    if (isTransitioning) return;
+    if (isTransitioning || products.length === 0) return;
     setIsTransitioning(true);
-    setActiveIndex((prev) => (prev === carouselSlides.length - 1 ? 0 : prev + 1));
+    setActiveIndex((prev) => (prev === products.length - 1 ? 0 : prev + 1));
     setTimeout(() => setIsTransitioning(false), 500);
   };
 
-  const currentSlide = carouselSlides[activeIndex];
+  // Show loading state
+  if (loading) {
+    return (
+      <section className="bg-[#E5DCC5] px-4 py-8 md:py-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="relative bg-linear-to-r from-[#F5F1EA] to-[#E5DCC5] rounded-2xl overflow-hidden shadow-lg h-75 md:h-100 lg:h-125 flex items-center justify-center">
+            <div className="text-[#4A2F1B] text-xl">Loading...</div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  // Show message if no products
+  if (products.length === 0) {
+    return (
+      <section className="bg-[#E5DCC5] px-4 py-8 md:py-12">
+        <div className="max-w-7xl mx-auto">
+          <div className="relative bg-linear-to-r from-[#F5F1EA] to-[#E5DCC5] rounded-2xl overflow-hidden shadow-lg h-75 md:h-100 lg:h-125 flex items-center justify-center">
+            <div className="text-[#4A2F1B] text-xl">No products available</div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  const currentProduct = products[activeIndex];
 
   return (
     <section className="bg-[#E5DCC5] px-4 py-8 md:py-12">
       <div className="max-w-7xl mx-auto">
-        <div className="relative bg-linear-to-r from-[#F5F1EA] to-[#E5DCC5] rounded-2xl overflow-hidden shadow-lg h-[300px] md:h-[400px] lg:h-[500px]">
+        <div className="relative bg-linear-to-r from-[#F5F1EA] to-[#E5DCC5] rounded-2xl overflow-hidden shadow-lg h-75 md:h-100 lg:h-125">
           {/* Navigation Arrows */}
           <button
             onClick={handlePrev}
@@ -100,21 +121,22 @@ export default function HeroCarousel() {
           {/* Main Image */}
           <div className="absolute inset-0">
             <Image
-              src={currentSlide.images[1]}
-              alt="Hero carousel image"
+              src={currentProduct.images[0]}
+              alt={currentProduct.title}
               fill
               className={`object-cover transition-all duration-500 ${
                 isTransitioning ? "opacity-0 scale-105" : "opacity-100 scale-100"
               }`}
               priority
               sizes="(max-width: 768px) 100vw, (max-width: 1200px) 80vw, 1200px"
+              unoptimized
             />
           </div>
         </div>
 
         {/* Carousel Dots */}
         <div className="flex justify-center gap-2 mt-6">
-          {carouselSlides.map((_, index) => (
+          {products.map((_, index) => (
             <button
               key={index}
               onClick={() => {
