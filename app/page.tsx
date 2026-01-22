@@ -17,8 +17,9 @@ export default function HomePage() {
 
   const loadProducts = async () => {
     try {
-      const products = await productsAPI.getAll();
-      setRecentProducts(products.slice(0, 4));
+      const response = await productsAPI.getAll({ limit: 10 });
+      const productsArray = response.data || [];
+      setRecentProducts(productsArray.slice(0, 10));
     } catch (error) {
       console.error('Failed to load products:', error);
     } finally {

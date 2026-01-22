@@ -48,8 +48,9 @@ export default function ProductDetailsPage() {
     const fetchProductData = async () => {
       try {
         // Fetch product
-        const productData = await productsAPI.getById(productId);
-        setProduct(productData);
+        const productResponse = await productsAPI.getById(productId);
+        const product = productResponse.data || productResponse;
+        setProduct(product);
 
         // Fetch reviews for this product
         const reviewsData = await reviewsAPI.getByProduct(productId);
@@ -65,9 +66,10 @@ export default function ProductDetailsPage() {
         setAverageRating(avgRating);
 
         // Fetch related products from same category
-        const allProducts = await productsAPI.getAll({ category: productData.category });
-        const related = Array.isArray(allProducts) 
-          ? allProducts.filter((p: Product) => p._id !== productId).slice(0, 4)
+        const allProductsResponse = await productsAPI.getAll({ category: product.category });
+        const relatedProductsArray = allProductsResponse.data || [];
+        const related = Array.isArray(relatedProductsArray) 
+          ? relatedProductsArray.filter((p: Product) => p._id !== productId).slice(0, 4)
           : [];
         setRelatedProducts(related);
 
