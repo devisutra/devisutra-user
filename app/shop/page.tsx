@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback } from "react";
+import { useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSearchParams } from "next/navigation";
@@ -22,7 +22,7 @@ interface Product {
 
 const PRODUCTS_PER_PAGE = 10;
 
-export default function ShopPage() {
+function ShopPageContent() {
   const searchParams = useSearchParams();
   const categoryFilter = searchParams.get("category") || "All";
   
@@ -289,5 +289,25 @@ export default function ShopPage() {
 
       </div>
     </div>
+  );
+}
+
+export default function ShopPage() {
+  return (
+    <Suspense fallback={
+      <div className="max-w-7xl mx-auto px-4 py-10">
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-serif text-[#4A2F1B]">Our Collection</h1>
+          <p className="text-gray-500 mt-2">Handcrafted with love, strictly for you.</p>
+        </div>
+        <div className="grid grid-cols-2 gap-4 md:gap-6">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <ProductSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    }>
+      <ShopPageContent />
+    </Suspense>
   );
 }
