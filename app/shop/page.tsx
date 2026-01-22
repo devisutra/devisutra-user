@@ -52,7 +52,7 @@ export default function ShopPage() {
           filters.category = categoryFilter;
         }
 
-        const response = await productsAPI.getAll(filters);
+        const response: any = await productsAPI.getAll(filters);
         
         return {
           data: response.data || [],
