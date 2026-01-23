@@ -3,6 +3,8 @@
 import { useState, useRef } from "react";
 import { Star, ShieldCheck, Upload, X, Loader2 } from "lucide-react";
 import Image from "next/image";
+import { reviewsAPI } from "@/lib/api-client";
+import { uploadImagesToCloudinary } from "@/lib/imageUpload";
 
 interface Review {
   _id: string;
@@ -61,71 +63,63 @@ export default function ReviewSection({
     setImagePreview(newPreviews);
   };
 
-  const uploadToCloudinary = async (file: File): Promise<string> => {
-    const formData = new FormData();
-    formData.append("file", file);
-    formData.append("upload_preset", "ml_default");
-    formData.append("cloud_name", "desdizloo");
-
-    try {
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/desdizloo/image/upload`,
-        {
-          method: "POST",
-          body: formData,
-        }
-      );
-
-      const data = await response.json();
-      return data.secure_url;
-    } catch (error) {
-      console.error("Error uploading to Cloudinary:", error);
-      throw error;
-    }
-  };
-
   const handleSubmitReview = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!customerName || !comment || rating === 0) {
-      alert("Please fill all required fields and select a rating");
+    // Validate required fields
+    if (!customerName.trim()) {
+      alert("Please enter your name");
+      return;
+    }
+
+    if (!comment.trim() || comment.trim().length < 10) {
+      alert("Please write a review with at least 10 characters");
+      return;
+    }
+
+    if (rating === 0) {
+      alert("Please select a rating");
       return;
     }
 
     setLoading(true);
-    setUploadingImages(true);
 
     try {
-      // Upload images to Cloudinary
+      // Upload images to Cloudinary if selected
       let uploadedImageUrls: string[] = [];
       if (selectedImages.length > 0) {
-        uploadedImageUrls = await Promise.all(
-          selectedImages.map((file) => uploadToCloudinary(file))
-        );
+        setUploadingImages(true);
+        try {
+          uploadedImageUrls = await uploadImagesToCloudinary(selectedImages, 'reviews');
+          setUploadingImages(false);
+        } catch (imageError: any) {
+          console.error("Image upload failed:", imageError);
+          setUploadingImages(false);
+          
+          // Auto-continue without images instead of asking
+          alert(`Note: Images could not be uploaded (${imageError.message}). Your review will be submitted without images.`);
+          uploadedImageUrls = [];
+          
+          // Clear failed images from preview
+          setSelectedImages([]);
+          setImagePreview([]);
+        }
       }
-      setUploadingImages(false);
 
       // Submit review via API
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://devisutra-api.onrender.com';
-      const response = await fetch(`${API_URL}/api/reviews`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          productId,
-          rating,
-          comment,
-          customerName,
-          images: uploadedImageUrls,
-        }),
-      });
+      const reviewData = {
+        productId,
+        rating,
+        comment: comment.trim(),
+        customerName: customerName.trim(),
+        images: uploadedImageUrls,
+      };
 
-      const data = await response.json();
+      const result = await reviewsAPI.create(reviewData);
 
-      if (response.ok && data.success) {
-        alert("Review submitted successfully! It will be visible after approval.");
-        
+      if (result) {
+        alert("✓ Review submitted successfully!\nIt will be visible after admin approval.");
+
         // Reset form
         setShowReviewForm(false);
         setRating(0);
@@ -133,12 +127,10 @@ export default function ReviewSection({
         setCustomerName("");
         setSelectedImages([]);
         setImagePreview([]);
-      } else {
-        alert(data.message || "Failed to submit review");
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error submitting review:", error);
-      alert("An error occurred. Please try again.");
+      alert(`Error: ${error.message || "Failed to submit review. Please try again."}`);
     } finally {
       setLoading(false);
       setUploadingImages(false);
@@ -236,7 +228,7 @@ export default function ReviewSection({
             {/* Comment */}
             <div>
               <label className="block text-sm font-medium text-[#4A2F1B] mb-2">
-                Your Review *
+                Your Review * (Min. 10 characters)
               </label>
               <textarea
                 required
@@ -246,6 +238,9 @@ export default function ReviewSection({
                 className="w-full border border-gray-300 p-3 rounded-lg outline-none focus:ring-2 focus:ring-[#C2A14D]"
                 placeholder="Share your experience with this product..."
               />
+              <div className="text-xs text-gray-500 mt-1">
+                {comment.length} characters
+              </div>
             </div>
 
             {/* Image Upload */}
@@ -253,6 +248,9 @@ export default function ReviewSection({
               <label className="block text-sm font-medium text-[#4A2F1B] mb-2">
                 Upload Photos (Optional, Max 5)
               </label>
+              <div className="text-xs text-gray-500 mb-2">
+                Supported formats: JPEG, PNG, WebP, GIF (Max 5MB each)
+              </div>
               <div className="flex flex-wrap gap-3">
                 {imagePreview.map((preview, index) => (
                   <div key={index} className="relative w-24 h-24">
@@ -284,7 +282,7 @@ export default function ReviewSection({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/*"
+                accept="image/jpeg,image/png,image/webp,image/gif"
                 multiple
                 onChange={handleImageSelect}
                 className="hidden"

@@ -135,7 +135,7 @@ export const cartAPI = {
  * Orders API
  */
 export const ordersAPI = {
-  create: async (customerDetails: any, paymentMethod: string = 'COD') => {
+  create: async (customerDetails: Record<string, unknown>, paymentMethod: string = 'COD') => {
     const response = await axiosInstance.post('/api/orders/create', { customerDetails, paymentMethod });
     return response.data || response;
   },
@@ -158,14 +158,29 @@ export const ordersAPI = {
 
 /**
  * Reviews API
+ * Handles all review-related operations
  */
 export const reviewsAPI = {
+  /**
+   * Get reviews for a product
+   * @param productId - Product ID
+   * @returns Review data including reviews array and average rating
+   */
   getByProduct: async (productId: string) => {
     const response = await axiosInstance.get(`/api/reviews?productId=${productId}`);
-    // Return the reviews array from the nested data structure
-    return (response as any)?.reviews || [];
+    const data = response?.data || response;
+    return {
+      reviews: data?.reviews || [],
+      averageRating: data?.averageRating || 0,
+      totalReviews: data?.totalReviews || 0,
+    };
   },
 
+  /**
+   * Submit a new review
+   * @param reviewData - Review data including product ID, rating, comment, name, and optional images
+   * @returns Created review object
+   */
   create: async (reviewData: {
     productId: string;
     rating: number;
@@ -173,8 +188,31 @@ export const reviewsAPI = {
     customerName: string;
     images?: string[];
   }) => {
+    // Validate review data
+    if (!reviewData.productId || !reviewData.rating || !reviewData.comment || !reviewData.customerName) {
+      throw new Error('Product ID, rating, comment, and customer name are required');
+    }
+
+    if (reviewData.rating < 1 || reviewData.rating > 5) {
+      throw new Error('Rating must be between 1 and 5');
+    }
+
+    if (reviewData.comment.trim().length < 10) {
+      throw new Error('Comment must be at least 10 characters long');
+    }
+
     const response = await axiosInstance.post('/api/reviews', reviewData);
-    return response.data || response;
+    return response?.data || response;
+  },
+
+  /**
+   * Get single review by ID
+   * @param reviewId - Review ID
+   * @returns Review object
+   */
+  getById: async (reviewId: string) => {
+    const response = await axiosInstance.get(`/api/reviews/${reviewId}`);
+    return response?.data || response;
   },
 };
 
